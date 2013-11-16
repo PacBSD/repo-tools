@@ -1,0 +1,127 @@
+#!/usr/local/bin/bash
+
+report_home=/home/blub
+report_db="${report_home}/dep.all.gz"
+report_db2="${report_home}/unstable.dep.gz"
+
+repos=(linux multilib extra community core testing)
+repos2=(unstable)
+
+repo_root=/home/amzo/public_ftp
+www_root=/home/blub/public_www/repo-report
+
+source /etc/repo-report.conf
+
+lockfile=${report_home}/.repo-report.lck
+
+if [[ "$1" != "go" ]]; then
+	if ! lockf -t0 "${lockfile}" "$0" go "$@"; then
+		echo "Lock file exists. If you are sure that no other report is running, remove ${lockfile}"
+		exit 1
+	fi
+	exit 0
+else
+	shift
+fi
+
+export PATH="${PATH}:/usr/local/bin"
+
+depdb='perl /home/blub/Sources/repo-tools/update-depdb.pl'
+
+ircpath="/home/blub/ircbot/irc/irc.freenode.net/#archbsd"
+
+www_url="http://users.archbsd.net/~blub/repo-report"
+
+die() {
+	printf "=> $1" "$@" >&2
+	exit 1
+}
+
+if [[ "$1" == "-v" ]]; then
+	echo "==> [repo-report] user-requested repo-report started..." \
+		>> "$ircpath/in"
+	shift
+fi
+
+quick=no
+subdir=$(date -v-1d '+%Y-%m-%d')
+if [[ $1 == today ]]; then
+	subdir=$(date '+%Y-%m-%d')
+	shift
+fi
+if [[ $1 == quick ]]; then
+	quick=yes
+	subdir=$(date '+%Y-%m-%d')
+	shift
+fi
+
+www="${www_root}/$subdir"
+
+part2=0
+
+mkdir -p "$www"
+rm -f "$www"/{depdb_output,broken,verbose,full,info,broken_quiet,integrity,integ_{libraries{,_verbose},packages}}.txt
+rm -f "$www"/{dep,dep.unstable}.db.gz
+rm -f "$www"/json.broken.txt
+rm -rf "${www}/unstable"
+
+if [[ $quick != yes ]]; then
+	for i in "${repos[@]}"; do
+		cd "${repo_root}/$i/os/x86_64" || die "failed to cd into ${repo_root}/$i/os/x86_64"
+		echo "Running au-depdb for $i" >> "${www}/depdb_output.txt"
+		$depdb                        &>> "${www}/depdb_output.txt"
+		echo ""                        >> "${www}/depdb_output.txt"
+	done
+	# 2nd repository
+	if cp "${report_db}" "${report_db2}"; then
+		part2=1
+		for i in "${repos2[@]}"; do
+			if ! cd "${repo_root}/$i/os/x86_64" 2>/dev/null ; then
+				echo "No such repository: $i - skipping part 2" >> "${www}/depdb_output.txt"
+				part2=0
+				break
+			fi
+			# Add the part for 'unstable' here...
+			echo "Running au-depdb for $i" >> "${www}/depdb_output.txt"
+			$depdb "${report_db2}"        &>> "${www}/depdb_output.txt"
+			echo ""                        >> "${www}/depdb_output.txt"
+		done
+	fi
+fi
+
+cd "${www}" || die "failed to change into directory ${www}"
+
+createinfo() {
+	local www="$1"; shift
+	pkgdepdb $@ -Ivv  > "$www/info.txt"
+	pkgdepdb $@ -Pb   > "$www/broken.txt"
+	pkgdepdb $@ -Pbq  | sort > "$www/broken_quiet.txt"
+	pkgdepdb $@ -Pbv  > "$www/verbose.txt"
+	pkgdepdb $@ -Pbvv > "$www/full.txt"
+
+	pkgdepdb $@ --json=q -Pbvvvq > "$www/json.broken.txt"
+
+	pkgdepdb $@ -qvj1 --integrity > "$www/integrity.txt"
+}
+
+echo "filling $www" >> "${www}/depdb_output.txt"
+createinfo "${www}"
+cp "${report_db}" "${www}/dep.db.gz"
+if (( $part2 )); then
+	echo "unstable part..." >> "${www}/depdb_output.txt"
+	mkdir -p "${www}/unstable"
+	createinfo "${www}/unstable" -d "${report_db2}"
+	cp "${report_db2}" "${www}/dep.unstable.db.gz"
+fi
+
+broken=$(wc -l "$www/broken_quiet.txt" | awk '{ print $1 }')
+integ=$(grep -o '^[^:]*' "$www/integrity.txt" | sort | uniq | wc -l | awk '{ print $1 }')
+
+grep '^missing package:' "$www/integrity.txt" | sort | uniq > "$www/integ_packages.txt"
+grep ': doesn'\''t pull in ' "$www/integrity.txt" > "$www/integ_libraries.txt"
+grep ': doesn'\''t pull in \| not pulled in for ' "$www/integrity.txt" > "$www/integ_libraries_verbose.txt"
+
+ln -shf "${subdir}" "${www_root}/current"
+
+echo "==> [repo-report] finished report (${broken} broken, ${integ} packages with integrity issues), check: $www_url/$subdir" \
+	>> "$ircpath/in"
