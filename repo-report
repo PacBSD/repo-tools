@@ -2,7 +2,9 @@
 
 report_home=/home/blub
 report_db="${report_home}/dep.all.gz"
+report_db_small="${report_home}/dep.small.gz"
 report_db2="${report_home}/unstable.dep.gz"
+report_db2_small="${report_home}/unstable.dep.small.gz"
 
 repos=(testing linux multilib extra community core)
 repos2=(unstable)
@@ -68,6 +70,7 @@ rm -rf "${www}/unstable"
 if [[ $quick != yes ]]; then
 	for i in "${repos[@]}"; do
 		cd "${repo_root}/$i/os/x86_64" || die "failed to cd into ${repo_root}/$i/os/x86_64"
+		echo "Running au-depdb for $i" >&2
 		echo "Running au-depdb for $i" >> "${www}/depdb_output.txt"
 		$depdb                        &>> "${www}/depdb_output.txt"
 		echo ""                        >> "${www}/depdb_output.txt"
@@ -82,6 +85,7 @@ if [[ $quick != yes ]]; then
 				break
 			fi
 			# Add the part for 'unstable' here...
+			echo "Running au-depdb for $i" >&2
 			echo "Running au-depdb for $i" >> "${www}/depdb_output.txt"
 			$depdb "${report_db2}"        &>> "${www}/depdb_output.txt"
 			echo ""                        >> "${www}/depdb_output.txt"
@@ -105,13 +109,19 @@ createinfo() {
 }
 
 echo "filling $www" >> "${www}/depdb_output.txt"
-createinfo "${www}"
-cp "${report_db}" "${www}/dep.db.gz"
+cp "${report_db}" "${report_db_small}"
+pkgdepdb -d "${report_db_small}" --rm-files
+createinfo "${www}" -d "${report_db_small}"
+cp "${report_db}" "${www}/full.db.gz"
+cp "${report_db_small}" "${www}/dep.db.gz"
 if (( $part2 )); then
 	echo "unstable part..." >> "${www}/depdb_output.txt"
 	mkdir -p "${www}/unstable"
-	createinfo "${www}/unstable" -d "${report_db2}"
-	cp "${report_db2}" "${www}/dep.unstable.db.gz"
+	cp "${report_db2}" "${report_db2_small}"
+	pkgdepdb -d "${report_db2_small}" --rm-files
+	createinfo "${www}/unstable" -d "${report_db2_small}"
+	cp "${report_db2}" "${www}/full.unstable.db.gz"
+	cp "${report_db2_small}" "${www}/dep.unstable.db.gz"
 fi
 
 broken=$(wc -l "$www/broken_quiet.txt" | awk '{ print $1 }')
