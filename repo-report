@@ -4,7 +4,7 @@ report_home=/home/blub
 report_db="${report_home}/dep.all.gz"
 report_db2="${report_home}/unstable.dep.gz"
 
-repos=(linux multilib extra community core testing)
+repos=(testing linux multilib extra community core)
 repos2=(unstable)
 
 repo_root=/home/amzo/public_ftp
