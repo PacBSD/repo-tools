@@ -12,7 +12,16 @@ repos2=(unstable)
 repo_root=/home/amzo/public_ftp
 www_root=/home/blub/public_www/repo-report
 
+depdb='rr-update-repo'
+ircpath="/home/blub/ircbot/irc/irc.freenode.net/#archbsd"
+www_url="http://users.archbsd.net/~blub/repo-report"
+
 source /etc/repo-report.conf
+
+dbfull="${report_db}"
+dbsmall="${report_db_small}"
+db2full="${report_db2}"
+db2small="${report_db2_small}"
 
 lockfile=${report_home}/.repo-report.lck
 
@@ -25,14 +34,6 @@ if [[ "$1" != "go" ]]; then
 else
 	shift
 fi
-
-export PATH="${PATH}:/usr/local/bin"
-
-depdb='perl /home/blub/Sources/repo-tools/update-depdb.pl'
-
-ircpath="/home/blub/ircbot/irc/irc.freenode.net/#archbsd"
-
-www_url="http://users.archbsd.net/~blub/repo-report"
 
 die() {
 	printf "=> $1" "$@" >&2
@@ -70,13 +71,13 @@ rm -rf "${www}/unstable"
 if [[ $quick != yes ]]; then
 	for i in "${repos[@]}"; do
 		cd "${repo_root}/$i/os/x86_64" || die "failed to cd into ${repo_root}/$i/os/x86_64"
-		echo "Running au-depdb for $i" >&2
-		echo "Running au-depdb for $i" >> "${www}/depdb_output.txt"
-		$depdb                        &>> "${www}/depdb_output.txt"
-		echo ""                        >> "${www}/depdb_output.txt"
+		echo "Running $depdb for $i" >&2
+		echo "Running $depdb for $i" >> "${www}/depdb_output.txt"
+		$depdb "${dbfull}" "${dbsmall}"     &>> "${www}/depdb_output.txt"
+		echo ""                              >> "${www}/depdb_output.txt"
 	done
 	# 2nd repository
-	if cp "${report_db}" "${report_db2}"; then
+	if cp "${dbfull}" "${db2full}"; then
 		part2=1
 		for i in "${repos2[@]}"; do
 			if ! cd "${repo_root}/$i/os/x86_64" 2>/dev/null ; then
@@ -85,10 +86,10 @@ if [[ $quick != yes ]]; then
 				break
 			fi
 			# Add the part for 'unstable' here...
-			echo "Running au-depdb for $i" >&2
-			echo "Running au-depdb for $i" >> "${www}/depdb_output.txt"
-			$depdb "${report_db2}"        &>> "${www}/depdb_output.txt"
-			echo ""                        >> "${www}/depdb_output.txt"
+			echo "Running $depdb for $i" >&2
+			echo "Running $depdb for $i" >> "${www}/depdb_output.txt"
+			$depdb "${db2full}" "${db2small}"   &>> "${www}/depdb_output.txt"
+			echo ""                              >> "${www}/depdb_output.txt"
 		done
 	fi
 fi
@@ -104,24 +105,28 @@ createinfo() {
 	pkgdepdb $@ -Pbvv > "$www/full.txt"
 
 	pkgdepdb $@ --json=q -Pbvvvq > "$www/json.broken.txt"
-
+}
+createinteg() {
+	local www="$1"; shift
 	pkgdepdb $@ -qvj1 --integrity > "$www/integrity.txt"
 }
 
 echo "filling $www" >> "${www}/depdb_output.txt"
-cp "${report_db}" "${report_db_small}"
-pkgdepdb -d "${report_db_small}" --rm-files
-createinfo "${www}" -d "${report_db_small}"
-cp "${report_db}" "${www}/full.db.gz"
-cp "${report_db_small}" "${www}/dep.db.gz"
+cp "${dbfull}" "${dbsmall}"
+pkgdepdb -d "${dbsmall}" --rm-files
+createinfo  "${www}" -d "${dbsmall}"
+createinteg "${www}" -d "${dbfull}"
+cp "${dbfull}" "${www}/full.db.gz"
+cp "${dbsmall}" "${www}/dep.db.gz"
 if (( $part2 )); then
 	echo "unstable part..." >> "${www}/depdb_output.txt"
 	mkdir -p "${www}/unstable"
-	cp "${report_db2}" "${report_db2_small}"
-	pkgdepdb -d "${report_db2_small}" --rm-files
-	createinfo "${www}/unstable" -d "${report_db2_small}"
-	cp "${report_db2}" "${www}/full.unstable.db.gz"
-	cp "${report_db2_small}" "${www}/dep.unstable.db.gz"
+	cp "${db2full}" "${db2small}"
+	pkgdepdb -d "${db2small}" --rm-files
+	createinfo  "${www}/unstable" -d "${db2small}"
+	createinteg "${www}/unstable" -d "${db2full}"
+	cp "${db2full}" "${www}/full.unstable.db.gz"
+	cp "${db2small}" "${www}/dep.unstable.db.gz"
 fi
 
 broken=$(wc -l "$www/broken_quiet.txt" | awk '{ print $1 }')
