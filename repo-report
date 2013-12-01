@@ -72,7 +72,6 @@ done
 if (( announce )); then
 	echo "==> [repo-report] user-requested repo-report started..." \
 		>> "$ircpath/in"
-	shift
 fi
 
 www="${www_root}/$subdir"
