@@ -64,8 +64,8 @@ part2=0
 
 mkdir -p "$www"
 rm -f "$www"/{depdb_output,broken,verbose,full,info,broken_quiet,integrity,integ_{libraries{,_verbose},packages}}.txt
-rm -f "$www"/{dep,dep.unstable}.db.gz
-rm -f "$www"/json.broken.txt
+rm -f "$www"/{dep,dep.unstable,full}.db.gz
+rm -f "$www"/{need-libstdc++{,_quiet},json.broken}.txt
 rm -rf "${www}/unstable"
 
 if [[ $quick != yes ]]; then
@@ -134,7 +134,8 @@ fi
 broken=$(wc -l "$www/broken_quiet.txt" | awk '{ print $1 }')
 integ=$(grep -o '^[^:]*' "$www/integrity.txt" | sort | uniq | wc -l | awk '{ print $1 }')
 fileconf=$(grep ' packages contain file: ' "$www/integrity.txt" | wc -l | awk '{ print $1 }')
-gxxdep=$(grep '^[^ ]' "$www/need-libstdc++.txt" | wc -l | awk '{ print $1 }')
+grep '^[^ ]' "$www/need-libstdc++.txt" > "$www/need-libstdc++_quiet.txt"
+gxxdep=$(cat "$www/need-libstdc++_quiet.txt" | wc -l | awk '{ print $1 }')
 
 grep '^missing package:' "$www/integrity.txt" | sort | uniq > "$www/integ_packages.txt"
 grep ': doesn'\''t pull in ' "$www/integrity.txt" > "$www/integ_libraries.txt"
