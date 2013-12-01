@@ -104,6 +104,8 @@ createinfo() {
 	pkgdepdb $@ -Pbv  > "$www/verbose.txt"
 	pkgdepdb $@ -Pbvv > "$www/full.txt"
 
+	pkgdepdb $@ -Pqv '-fpkglibdepends:libstdc++*' '-flibdepends:libstdc++*' > "$www/need-libstdc++.txt"
+
 	pkgdepdb $@ --json=q -Pbvvvq > "$www/json.broken.txt"
 }
 createinteg() {
@@ -132,6 +134,7 @@ fi
 broken=$(wc -l "$www/broken_quiet.txt" | awk '{ print $1 }')
 integ=$(grep -o '^[^:]*' "$www/integrity.txt" | sort | uniq | wc -l | awk '{ print $1 }')
 fileconf=$(grep ' packages contain file: ' "$www/integrity.txt" | wc -l | awk '{ print $1 }')
+gxxdep=$(grep '^[^ ]' "$www/need-libstdc++.txt" | wc -l | awk '{ print $1 }')
 
 grep '^missing package:' "$www/integrity.txt" | sort | uniq > "$www/integ_packages.txt"
 grep ': doesn'\''t pull in ' "$www/integrity.txt" > "$www/integ_libraries.txt"
@@ -139,5 +142,5 @@ grep ': doesn'\''t pull in \| not pulled in for ' "$www/integrity.txt" > "$www/i
 
 ln -shf "${subdir}" "${www_root}/current"
 
-echo "==> [repo-report] finished report (${broken} broken, ${integ} dependency issues, ${fileconf} file conflict issues), check: $www_url/$subdir" \
+echo "==> [repo-report] finished: [broken:${broken}] [depend-issues:${integ}] [file-conflicts:${fileconf}] [libstdc++ linked:${cxxdep}]), check: $www_url/$subdir" \
 	>> "$ircpath/in"
