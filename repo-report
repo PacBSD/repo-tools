@@ -142,5 +142,5 @@ grep ': doesn'\''t pull in \| not pulled in for ' "$www/integrity.txt" > "$www/i
 
 ln -shf "${subdir}" "${www_root}/current"
 
-echo "==> [repo-report] finished: [broken:${broken}] [depend-issues:${integ}] [file-conflicts:${fileconf}] [libstdc++ linked:${cxxdep}]), check: $www_url/$subdir" \
+echo "==> [repo-report] finished: [broken:${broken}] [depend-issues:${integ}] [file-conflicts:${fileconf}] [libstdc++ linked:${gxxdep}]), check: $www_url/$subdir" \
 	>> "$ircpath/in"
