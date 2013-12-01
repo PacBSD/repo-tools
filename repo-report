@@ -40,21 +40,38 @@ die() {
 	exit 1
 }
 
-if [[ "$1" == "-v" ]]; then
-	echo "==> [repo-report] user-requested repo-report started..." \
-		>> "$ircpath/in"
-	shift
-fi
-
+announce=0
 quick=no
 subdir=$(date -v-1d '+%Y-%m-%d')
-if [[ $1 == today ]]; then
-	subdir=$(date '+%Y-%m-%d')
+while (( $# > 0 )); do
+	case "$1" in
+		-v) announce=1 ;;
+		-r?*)
+			arg=${1#-r}
+			repos=(${arg})
+			;;
+		-r)
+			if (( $# < 2 )); then
+				echo "-r option needs a parameter"
+				exit 1
+			fi
+			shift
+			repos=($1)
+			;;
+		quick)
+			quick=yes
+			subdir=$(date '+%Y-%m-%d')
+			;;
+		today)
+			subdir=$(date '+%Y-%m-%d')
+			;;
+	esac
 	shift
-fi
-if [[ $1 == quick ]]; then
-	quick=yes
-	subdir=$(date '+%Y-%m-%d')
+done
+
+if (( announce )); then
+	echo "==> [repo-report] user-requested repo-report started..." \
+		>> "$ircpath/in"
 	shift
 fi
 
