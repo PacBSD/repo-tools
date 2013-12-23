@@ -89,8 +89,8 @@ if [[ $quick != yes ]]; then
 		cd "${repo_root}/$i/os/x86_64" || die "failed to cd into ${repo_root}/$i/os/x86_64"
 		echo "Running $depdb for $i" >&2
 		echo "Running $depdb for $i" >> "${www}/depdb_output.txt"
-		$depdb "${dbfull}" "${dbsmall}"     &>> "${www}/depdb_output.txt"
-		echo ""                              >> "${www}/depdb_output.txt"
+		$depdb "${dbfull}"          &>> "${www}/depdb_output.txt"
+		echo ""                      >> "${www}/depdb_output.txt"
 	done
 	# 2nd repository
 	if cp "${dbfull}" "${db2full}"; then
@@ -104,8 +104,8 @@ if [[ $quick != yes ]]; then
 			# Add the part for 'unstable' here...
 			echo "Running $depdb for $i" >&2
 			echo "Running $depdb for $i" >> "${www}/depdb_output.txt"
-			$depdb "${db2full}" "${db2small}"   &>> "${www}/depdb_output.txt"
-			echo ""                              >> "${www}/depdb_output.txt"
+			$depdb "${db2full}"         &>> "${www}/depdb_output.txt"
+			echo ""                      >> "${www}/depdb_output.txt"
 		done
 	fi
 fi
