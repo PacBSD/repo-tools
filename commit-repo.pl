@@ -171,21 +171,21 @@ for my $pkg (@$new_packages) {
 	my $name = ${$pkg}{name};
 	my $ver  = ${$pkg}{ver};
 	my $tar  = "$name-$ver-$carch.pkg.tar.xz";
-    # check for a signature file:
-    if (not -e $tar) {
+	# check for a signature file:
+	if (not -e $tar) {
 		$tar = "$name-$ver-any.pkg.tar.xz";
 	}
-    if (not -e $tar) {
-    	print("Package archive missing for $name-$ver\n");
-    	$err = 1;
-    }
+	if (not -e $tar) {
+		print("Package archive missing for $name-$ver\n");
+		$err = 1;
+	}
 	my $sig = "$tar.sig";
-    if (not -e $sig) {
-    	print("Signature missing for $name-$ver\n");
-    	$err = 1;
-    }
-    ${$pkg}{tar} = $tar;
-    ${$pkg}{sig} = $sig;
+	if (not -e $sig) {
+		print("Signature missing for $name-$ver\n");
+		$err = 1;
+	}
+	${$pkg}{tar} = $tar;
+	${$pkg}{sig} = $sig;
 }
 die "There have been errors\n" if $err;
 
